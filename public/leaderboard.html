@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Leaderboard - FRC Wagering</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .leaderboard-container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .leaderboard-header {
+            background: white;
+            padding: 20px 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-bottom: 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+        .leaderboard-header h1 {
+            color: #667eea;
+            font-size: 2em;
+        }
+        .tab-buttons {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .tab-button {
+            padding: 10px 20px;
+            background: #e0e0e0;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: all 0.3s;
+        }
+        .tab-button.active {
+            background: #667eea;
+            color: white;
+        }
+        .tab-button:hover {
+            background: #5568d3;
+            color: white;
+        }
+        .leaderboard-section {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .leaderboard-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .leaderboard-table th {
+            background: #f0f0f0;
+            padding: 15px;
+            text-align: left;
+            font-weight: bold;
+            color: #333;
+            border-bottom: 2px solid #ddd;
+        }
+        .leaderboard-table td {
+            padding: 15px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        .leaderboard-table tr:hover {
+            background: #f9f9f9;
+        }
+        .rank {
+            font-weight: bold;
+            color: #667eea;
+            width: 60px;
+        }
+        .rank.gold {
+            color: #ffd700;
+        }
+        .rank.silver {
+            color: #c0c0c0;
+        }
+        .rank.bronze {
+            color: #cd7f32;
+        }
+        .username {
+            font-weight: bold;
+            color: #333;
+        }
+        .points {
+            color: #4caf50;
+            font-weight: bold;
+        }
+        .predictions {
+            color: #2196f3;
+            font-weight: bold;
+        }
+        .win-rate {
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="leaderboard-container">
+        <div class="leaderboard-header">
+            <h1>🏆 Leaderboard</h1>
+            <div>
+                <a href="index.html" style="color: #667eea; text-decoration: none; margin-right: 15px;">← Back to Site</a>
+                <a href="admin.html" class="admin-link">Admin Dashboard</a>
+            </div>
+        </div>
+
+        <div class="tab-buttons">
+            <button class="tab-button active" onclick="showTab('points')">Top Points</button>
+            <button class="tab-button" onclick="showTab('predictions')">Most Correct Predictions</button>
+        </div>
+
+        <div class="leaderboard-section">
+            <div id="pointsTab">
+                <h2 style="color: #667eea; margin-bottom: 20px;">Top Points</h2>
+                <table class="leaderboard-table">
+                    <thead>
+                        <tr>
+                            <th class="rank">Rank</th>
+                            <th>Username</th>
+                            <th style="text-align: right;">Points</th>
+                        </tr>
+                    </thead>
+                    <tbody id="pointsLeaderboard">
+                        <tr>
+                            <td colspan="3" style="text-align: center; padding: 40px; color: #999;">
+                                Loading...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div id="predictionsTab" style="display: none;">
+                <h2 style="color: #667eea; margin-bottom: 20px;">Most Correct Predictions</h2>
+                <table class="leaderboard-table">
+                    <thead>
+                        <tr>
+                            <th class="rank">Rank</th>
+                            <th>Username</th>
+                            <th style="text-align: right;">Correct</th>
+                            <th style="text-align: right;">Total</th>
+                            <th style="text-align: right;">Win Rate</th>
+                        </tr>
+                    </thead>
+                    <tbody id="predictionsLeaderboard">
+                        <tr>
+                            <td colspan="5" style="text-align: center; padding: 40px; color: #999;">
+                                Loading...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function showTab(tab) {
+            // Update tab buttons
+            document.querySelectorAll('.tab-button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+
+            // Show/hide tabs
+            document.getElementById('pointsTab').style.display = tab === 'points' ? 'block' : 'none';
+            document.getElementById('predictionsTab').style.display = tab === 'predictions' ? 'block' : 'none';
+
+            // Load data if needed
+            if (tab === 'points') {
+                loadPointsLeaderboard();
+            } else {
+                loadPredictionsLeaderboard();
+            }
+        }
+
+        async function loadPointsLeaderboard() {
+            try {
+                const response = await fetch('/api/leaderboard/points');
+                const leaderboard = await response.json();
+
+                const tbody = document.getElementById('pointsLeaderboard');
+                if (leaderboard.length === 0) {
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="3" style="text-align: center; padding: 40px; color: #999;">
+                                No users yet
+                            </td>
+                        </tr>
+                    `;
+                    return;
+                }
+
+                tbody.innerHTML = leaderboard.map((user, index) => {
+                    const rank = index + 1;
+                    let rankClass = '';
+                    if (rank === 1) rankClass = 'gold';
+                    else if (rank === 2) rankClass = 'silver';
+                    else if (rank === 3) rankClass = 'bronze';
+
+                    return `
+                        <tr>
+                            <td class="rank ${rankClass}">#${rank}</td>
+                            <td class="username">${user.username}</td>
+                            <td class="points" style="text-align: right;">${user.points.toLocaleString()}</td>
+                        </tr>
+                    `;
+                }).join('');
+            } catch (error) {
+                console.error('Error loading points leaderboard:', error);
+                document.getElementById('pointsLeaderboard').innerHTML = `
+                    <tr>
+                        <td colspan="3" style="text-align: center; padding: 40px; color: #f44336;">
+                            Error loading leaderboard
+                        </td>
+                    </tr>
+                `;
+            }
+        }
+
+        async function loadPredictionsLeaderboard() {
+            try {
+                const response = await fetch('/api/leaderboard/predictions');
+                const leaderboard = await response.json();
+
+                const tbody = document.getElementById('predictionsLeaderboard');
+                if (leaderboard.length === 0) {
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="5" style="text-align: center; padding: 40px; color: #999;">
+                                No predictions yet
+                            </td>
+                        </tr>
+                    `;
+                    return;
+                }
+
+                tbody.innerHTML = leaderboard.map((user, index) => {
+                    const rank = index + 1;
+                    let rankClass = '';
+                    if (rank === 1) rankClass = 'gold';
+                    else if (rank === 2) rankClass = 'silver';
+                    else if (rank === 3) rankClass = 'bronze';
+
+                    return `
+                        <tr>
+                            <td class="rank ${rankClass}">#${rank}</td>
+                            <td class="username">${user.username}</td>
+                            <td class="predictions" style="text-align: right;">${user.correctPredictions}</td>
+                            <td style="text-align: right;">${user.totalWagers}</td>
+                            <td class="win-rate" style="text-align: right;">${user.winRate}%</td>
+                        </tr>
+                    `;
+                }).join('');
+            } catch (error) {
+                console.error('Error loading predictions leaderboard:', error);
+                document.getElementById('predictionsLeaderboard').innerHTML = `
+                    <tr>
+                        <td colspan="5" style="text-align: center; padding: 40px; color: #f44336;">
+                            Error loading leaderboard
+                        </td>
+                    </tr>
+                `;
+            }
+        }
+
+        // Load initial data
+        document.addEventListener('DOMContentLoaded', () => {
+            loadPointsLeaderboard();
+        });
+
+        // Auto-refresh every 10 seconds
+        setInterval(() => {
+            if (document.getElementById('pointsTab').style.display !== 'none') {
+                loadPointsLeaderboard();
+            } else {
+                loadPredictionsLeaderboard();
+            }
+        }, 10000);
+    </script>
+</body>
+</html>
+

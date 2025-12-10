@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FRC Match Wagering</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Login Section -->
+    <div id="loginSection" class="login-container">
+        <div class="login-box">
+            <h1>🏎️ FRC Match Wagering</h1>
+            <h2>Login</h2>
+            <form id="loginForm" onsubmit="userLogin(event)">
+                <label>
+                    Name:
+                    <input type="text" id="usernameInput" placeholder="Enter your name" required>
+                </label>
+                <label>
+                    Password:
+                    <input type="password" id="passwordInput" placeholder="Enter your password" required>
+                </label>
+                <button type="submit">Login</button>
+            </form>
+            <p id="loginError" class="error-message" style="display: none;"></p>
+            <p class="login-hint">New users: Enter your name and password to create an account</p>
+        </div>
+    </div>
+
+    <!-- Main App (shown after login) -->
+    <div id="mainApp" class="container" style="display: none;">
+        <!-- Live Stats Bar -->
+        <div id="statsBar" class="stats-bar" style="display: none;">
+            <div class="stats-bar-content">
+                <div class="stats-bar-team" id="statsBarTeam1">
+                    <span class="stats-bar-label" id="statsBarLabel1"></span>
+                    <span class="stats-bar-value" id="statsBarValue1"></span>
+                </div>
+                <div class="stats-bar-fill-container">
+                    <div class="stats-bar-fill" id="statsBarFill">
+                        <div class="stats-bar-team1-fill" id="statsBarTeam1Fill"></div>
+                        <div class="stats-bar-team2-fill" id="statsBarTeam2Fill"></div>
+                    </div>
+                </div>
+                <div class="stats-bar-team" id="statsBarTeam2">
+                    <span class="stats-bar-label" id="statsBarLabel2"></span>
+                    <span class="stats-bar-value" id="statsBarValue2"></span>
+                </div>
+            </div>
+        </div>
+
+        <header>
+            <h1>🏎️ FRC Match Wagering</h1>
+            <div class="user-info">
+                <div id="userDisplay" class="user-display">
+                    <span id="usernameDisplay"></span>
+                    <div id="userPoints" class="points-display">Points: -</div>
+                </div>
+                <button onclick="userLogout()" class="logout-btn">Logout</button>
+                <a href="leaderboard.html" class="admin-link">Leaderboard</a>
+                <a href="admin.html" class="admin-link">Admin Dashboard</a>
+            </div>
+        </header>
+
+        <main>
+            <section class="matches-section">
+                <h2>Active Match</h2>
+                <div id="matchesList" class="matches-grid">
+                    <!-- Active match will be loaded here -->
+                </div>
+            </section>
+
+            <section class="wagers-section">
+                <h2>Your Wagers</h2>
+                <div id="wagersList" class="wagers-list">
+                    <!-- Wagers will be loaded here -->
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Wager Modal -->
+    <div id="wagerModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <h2>Place Wager</h2>
+            <div id="matchInfo"></div>
+            <form id="wagerForm" onsubmit="placeWager(event)">
+                <label>
+                    Select Team:
+                    <select id="teamSelect" required>
+                        <option value="">Choose a team...</option>
+                    </select>
+                </label>
+                <label>
+                    Points to Wager:
+                    <input type="number" id="pointsInput" min="1" required>
+                </label>
+                <div id="potentialWinnings" style="display: none;"></div>
+                <div class="modal-actions">
+                    <button type="submit">Place Wager</button>
+                    <button type="button" onclick="closeModal()">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
+

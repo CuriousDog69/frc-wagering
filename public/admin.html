@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - FRC Wagering</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .admin-container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .login-section {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            max-width: 400px;
+            margin: 50px auto;
+        }
+        .login-section h2 {
+            margin-bottom: 20px;
+            color: #667eea;
+        }
+        .login-section input {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 15px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 1em;
+        }
+        .dashboard-section {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+        .dashboard-section h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+        }
+        .active-match-display {
+            background: #f0f0f0;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .match-controls {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        .match-controls select {
+            flex: 1;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+        }
+        .match-history {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .history-item {
+            border-left: 4px solid #667eea;
+            padding: 15px;
+            margin-bottom: 10px;
+            background: #f9f9f9;
+            border-radius: 5px;
+        }
+        .history-item.completed {
+            border-left-color: #4caf50;
+        }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        .stat-box {
+            background: #f0f0f0;
+            padding: 15px;
+            border-radius: 5px;
+            text-align: center;
+        }
+        .stat-value {
+            font-size: 2em;
+            font-weight: bold;
+            color: #667eea;
+        }
+        .stat-label {
+            color: #666;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="admin-container">
+        <!-- Login Section (shown when not logged in) -->
+        <div id="loginSection" class="login-section">
+            <h2>🔐 Admin Login</h2>
+            <input type="password" id="adminPassword" placeholder="Enter admin password" onkeypress="if(event.key==='Enter') adminLogin()">
+            <button onclick="adminLogin()" style="width: 100%;">Login</button>
+            <p id="loginError" style="color: red; margin-top: 10px; display: none;"></p>
+        </div>
+
+        <!-- Dashboard (shown when logged in) -->
+        <div id="dashboard" style="display: none;">
+            <header style="background: white; padding: 20px; border-radius: 10px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;">
+                <h1>⚙️ Admin Dashboard</h1>
+                <div>
+                    <a href="index.html" style="margin-right: 15px; color: #667eea; text-decoration: none;">← Back to Site</a>
+                    <button onclick="adminLogout()">Logout</button>
+                </div>
+            </header>
+
+            <!-- Schedule New Match -->
+            <div class="dashboard-section">
+                <h2>Schedule New Match</h2>
+                <form id="scheduleForm" onsubmit="scheduleMatch(event)">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                        <label>
+                            Team 1:
+                            <input type="text" id="team1Input" required placeholder="e.g., Team 254">
+                        </label>
+                        <label>
+                            Team 2:
+                            <input type="text" id="team2Input" required placeholder="e.g., Team 118">
+                        </label>
+                    </div>
+                    <button type="submit">Schedule Match</button>
+                </form>
+            </div>
+
+            <!-- TBA Integration -->
+            <div class="dashboard-section">
+                <h2>The Blue Alliance Integration</h2>
+                <div id="tbaConfigSection">
+                    <div style="margin-bottom: 15px;">
+                        <label style="display: block; margin-bottom: 5px; font-weight: bold;">
+                            TBA API Key:
+                            <input type="text" id="tbaApiKey" placeholder="Enter TBA API key" style="width: 100%; padding: 8px; margin-top: 5px; border: 2px solid #ddd; border-radius: 5px;">
+                        </label>
+                        <label style="display: block; margin-bottom: 15px; font-weight: bold;">
+                            Event Key (e.g., 2024mndu):
+                            <input type="text" id="tbaEventKey" placeholder="Enter event key" style="width: 100%; padding: 8px; margin-top: 5px; border: 2px solid #ddd; border-radius: 5px;">
+                        </label>
+                        <button onclick="saveTBAConfig()" style="padding: 10px 20px; background: #667eea; color: white; border: none; border-radius: 5px; cursor: pointer;">
+                            Save TBA Configuration
+                        </button>
+                    </div>
+                    <div id="tbaConfigStatus" style="padding: 10px; background: #f0f0f0; border-radius: 5px; margin-bottom: 15px; display: none;"></div>
+                </div>
+                <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 15px;">
+                    <button onclick="syncFromTBA()" style="padding: 10px 20px; background: #4caf50; color: white; border: none; border-radius: 5px; cursor: pointer;">
+                        Sync Next Match from TBA
+                    </button>
+                    <button onclick="autoResolveFromTBA()" style="padding: 10px 20px; background: #ff9800; color: white; border: none; border-radius: 5px; cursor: pointer;">
+                        Auto-Resolve from TBA
+                    </button>
+                </div>
+                <p id="tbaMessage" style="margin-top: 15px; color: #666; display: none;"></p>
+            </div>
+
+            <!-- Admin Actions -->
+            <div class="dashboard-section">
+                <h2>Admin Actions</h2>
+                <div style="display: flex; gap: 15px; flex-wrap: wrap;">
+                    <button onclick="resetAllPoints()" style="background: #f44336; padding: 12px 24px;">
+                        Reset All Points to 100
+                    </button>
+                    <a href="leaderboard.html" style="padding: 12px 24px; background: #667eea; color: white; text-decoration: none; border-radius: 5px; display: inline-block;">
+                        View Leaderboard
+                    </a>
+                </div>
+                <p id="resetMessage" style="margin-top: 15px; color: #666; display: none;"></p>
+            </div>
+
+            <!-- Active Match Control -->
+            <div class="dashboard-section">
+                <h2>Active Match</h2>
+                <div id="activeMatchDisplay" class="active-match-display">
+                    <p style="text-align: center; color: #999;">No active match</p>
+                </div>
+            </div>
+
+            <!-- Match History -->
+            <div class="dashboard-section">
+                <h2>Match History</h2>
+                <div id="matchHistory" class="match-history">
+                    <!-- History will be loaded here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="admin.js"></script>
+</body>
+</html>
+

@@ -1,0 +1,19 @@
+{
+  "name": "frc-wagering",
+  "version": "1.0.0",
+  "description": "Simple website and server for wagering points on FRC matches",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "keywords": ["frc", "wagering", "betting"],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}
+
