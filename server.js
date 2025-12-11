@@ -14,7 +14,7 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Serve index.html for root route and other routes (SPA fallback)
-app.get('/', (req, res) => {
+/*app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
@@ -25,7 +25,7 @@ app.get('/admin.html', (req, res) => {
 
 app.get('/leaderboard.html', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'leaderboard.html'));
-});
+});*/
 
 // In-memory data storage (in production, use a database)
 let users = {}; // { username: { password: string, points: number, wagers: [] } }
@@ -636,6 +636,10 @@ app.post('/api/admin/tba/auto-resolve', requireAdmin, async (req, res) => {
       details: error.message 
     });
   }
+});
+
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 // Start server
