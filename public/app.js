@@ -3,6 +3,118 @@ let currentUsername = null;
 let currentMatch = null;
 let currentMatchId = null;
 
+// Custom Modal System
+const CustomModal = {
+    overlay: null,
+    icon: null,
+    title: null,
+    message: null,
+    buttons: null,
+
+    init() {
+        this.overlay = document.getElementById('customModalOverlay');
+        this.icon = document.getElementById('customModalIcon');
+        this.title = document.getElementById('customModalTitle');
+        this.message = document.getElementById('customModalMessage');
+        this.buttons = document.getElementById('customModalButtons');
+
+        if (this.overlay) {
+            this.overlay.addEventListener('click', (e) => {
+                if (e.target === this.overlay) {
+                    this.close();
+                }
+            });
+        }
+    },
+
+    show(options) {
+        const { type = 'info', title = '', message = '', buttons = [] } = options;
+
+        const icons = {
+            info: 'ℹ️',
+            success: '✅',
+            error: '❌',
+            warning: '⚠️'
+        };
+        this.icon.textContent = icons[type] || icons.info;
+        this.icon.className = `custom-modal-icon ${type}`;
+
+        this.title.textContent = title;
+        this.message.textContent = message;
+
+        this.buttons.innerHTML = '';
+        buttons.forEach(btn => {
+            const button = document.createElement('button');
+            button.className = `custom-modal-btn ${btn.style || 'secondary'}`;
+            button.textContent = btn.text;
+            button.onclick = () => {
+                if (btn.onClick) btn.onClick();
+                this.close();
+            };
+            this.buttons.appendChild(button);
+        });
+
+        this.overlay.classList.add('show');
+    },
+
+    close() {
+        this.overlay.classList.remove('show');
+    },
+
+    alert(message, title = 'Notice') {
+        return new Promise(resolve => {
+            this.show({
+                type: 'info',
+                title,
+                message,
+                buttons: [
+                    { text: 'OK', style: 'primary', onClick: resolve }
+                ]
+            });
+        });
+    },
+
+    success(message, title = 'Success') {
+        return new Promise(resolve => {
+            this.show({
+                type: 'success',
+                title,
+                message,
+                buttons: [
+                    { text: 'OK', style: 'primary', onClick: resolve }
+                ]
+            });
+        });
+    },
+
+    error(message, title = 'Error') {
+        return new Promise(resolve => {
+            this.show({
+                type: 'error',
+                title,
+                message,
+                buttons: [
+                    { text: 'OK', style: 'primary', onClick: resolve }
+                ]
+            });
+        });
+    },
+
+    confirm(message, title = 'Confirm') {
+        return new Promise(resolve => {
+            this.show({
+                type: 'warning',
+                title,
+                message,
+                buttons: [
+                    { text: 'Cancel', style: 'secondary', onClick: () => resolve(false) },
+                    { text: 'Confirm', style: 'danger', onClick: () => resolve(true) }
+                ]
+            });
+        });
+    }
+};
+
 // Initialize - check if already logged in
 document.addEventListener('DOMContentLoaded', () => {
     const savedToken = localStorage.getItem('userSessionToken');
@@ -54,11 +166,12 @@ async function userLogin(event) {
     event.preventDefault();
     
     const username = document.getElementById('usernameInput').value.trim();
+    const name = (document.getElementById('nameInput') && document.getElementById('nameInput').value.trim()) || undefined;
     const password = document.getElementById('passwordInput').value;
     const errorEl = document.getElementById('loginError');
 
     if (!username || !password) {
-        errorEl.textContent = 'Please enter both name and password';
+        errorEl.textContent = 'Please enter both username and password';
         errorEl.style.display = 'block';
         return;
     }
@@ -69,7 +182,7 @@ async function userLogin(event) {
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ username, password })
+            body: JSON.stringify({ username, password, name })
         });
 
         const result = await response.json();
@@ -81,7 +194,7 @@ async function userLogin(event) {
             localStorage.setItem('username', currentUsername);
             
             if (result.isNewUser) {
-                alert(`Welcome, ${username}! Your account has been created with 1000 starting points.`);
+                alert(`Welcome, ${username}! Your account has been created with 100 points.`);
             }
             
             showApp();
@@ -296,6 +409,8 @@ async function loadUserInfo() {
         if (response.ok) {
             const user = await response.json();
             document.getElementById('userPoints').textContent = `Points: ${user.points}`;
+            // Keep the header showing the username (login name)
+            document.getElementById('usernameDisplay').textContent = currentUsername;
             displayWagers(user.wagers);
         }
     } catch (error) {

@@ -14,8 +14,12 @@
             <h2>Login</h2>
             <form id="loginForm" onsubmit="userLogin(event)">
                 <label>
-                    Name:
-                    <input type="text" id="usernameInput" placeholder="Enter your name" required>
+                    Username:
+                    <input type="text" id="usernameInput" placeholder="Enter a username" required>
+                </label>
+                <label>
+                    Scouting Name:
+                    <input type="text" id="nameInput" placeholder="Enter your scouting name">
                 </label>
                 <label>
                     Password:
@@ -24,7 +28,7 @@
                 <button type="submit">Login</button>
             </form>
             <p id="loginError" class="error-message" style="display: none;"></p>
-            <p class="login-hint">New users: Enter your name and password to create an account</p>
+            <p class="login-hint">New users: Enter a username, optional display name, and password to create an account</p>
         </div>
     </div>
 
@@ -107,6 +111,20 @@
     </div>
 
     <script src="app.js"></script>
+
+    <!-- Custom Modal Overlay -->
+<div id="customModalOverlay" class="custom-modal-overlay">
+    <div class="custom-modal-box">
+        <div class="custom-modal-header">
+            <span id="customModalIcon" class="custom-modal-icon"></span>
+            <h3 id="customModalTitle" class="custom-modal-title"></h3>
+        </div>
+        <div id="customModalMessage" class="custom-modal-message"></div>
+        <div id="customModalButtons" class="custom-modal-buttons"></div>
+    </div>
+</div>
+
+
 </body>
 </html>
 

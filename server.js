@@ -8,10 +8,52 @@ const PORT = process.env.PORT || 3000;
 const TBA_API_BASE = 'https://www.thebluealliance.com/api/v3';
 let TBA_API_KEY = process.env.TBA_API_KEY || 'SdMHbJ9qgT5GUlkOJthWcuf6ddR9yAyMWawjNIKw0dP65UZHjYHkXlteqQcziHjC'; // Can be set via environment variable or admin endpoint
 let TBA_EVENT_KEY = process.env.TBA_EVENT_KEY || ''; // Can be set via environment variable or admin endpoint
+// Scouting reward and rate limit configuration (can be overridden via env or admin endpoint)
+let SCOUTING_REWARD = process.env.SCOUTING_REWARD ? parseInt(process.env.SCOUTING_REWARD, 10) : 25;
+let RATE_LIMIT_PER_SECOND = process.env.RATE_LIMIT_PER_SECOND ? parseFloat(process.env.RATE_LIMIT_PER_SECOND) : 5;
 
 // Middleware
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
+
+// Simple in-memory rate limiter (token-bucket per identifier)
+const rateBuckets = {}; // { key: { tokens, last } }
+
+function getRateKey(req) {
+  // Prefer session tokens (admin/user) so limits apply per user/admin; otherwise fall back to IP
+  if (req.headers['x-admin-session']) return `admin:${req.headers['x-admin-session']}`;
+  if (req.headers['x-user-session']) return `user:${req.headers['x-user-session']}`;
+  return `ip:${req.ip || req.connection.remoteAddress || 'unknown'}`;
+}
+
+function rateLimiter(req, res, next) {
+  const key = getRateKey(req);
+  const now = Date.now() / 1000; // seconds
+  const limit = RATE_LIMIT_PER_SECOND;
+
+  let bucket = rateBuckets[key];
+  if (!bucket) {
+    bucket = { tokens: limit, last: now };
+  }
+
+  const elapsed = Math.max(0, now - (bucket.last || now));
+  // Refill tokens
+  bucket.tokens = Math.min(limit, bucket.tokens + elapsed * limit);
+  bucket.last = now;
+
+  if (bucket.tokens >= 1) {
+    bucket.tokens -= 1;
+    rateBuckets[key] = bucket;
+    next();
+  } else {
+    const retryAfter = Math.ceil((1 - bucket.tokens) / Math.max(0.0001, limit));
+    res.setHeader('Retry-After', String(retryAfter));
+    res.status(429).json({ error: 'Too many requests', retryAfter });
+  }
+}
+
+// Apply rate limiter to all API routes
+app.use('/api', rateLimiter);
 
 // Serve index.html for root route and other routes (SPA fallback)
 /*app.get('/', (req, res) => {
@@ -45,7 +87,7 @@ let userSessions = {}; // { sessionToken: username }
 // Helper function to get or create user
 function getUser(username) {
   if (!users[username]) {
-    users[username] = { password: '', points: 100, wagers: [] }; // Start with 100 points
+    users[username] = { password: '', name: username, points: 100, wagers: [] }; // Start with 100 points
   }
   return users[username];
 }
@@ -158,7 +200,7 @@ function requireUser(req, res, next) {
 
 // User: Register/Login
 app.post('/api/user/login', (req, res) => {
-  const { username, password } = req.body;
+  const { username, password, name } = req.body;
 
   if (!username || !password) {
     return res.status(400).json({ error: 'Username and password are required' });
@@ -168,16 +210,19 @@ app.post('/api/user/login', (req, res) => {
 
   // If user doesn't exist or password is being set for the first time
   if (!user.password) {
-    // First time login - set password
+    // First time login - set password and optional display name
     user.password = password;
+    if (name) user.name = name;
     const sessionToken = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
     userSessions[sessionToken] = username;
-    res.json({ success: true, sessionToken, username, isNewUser: true });
+    res.json({ success: true, sessionToken, username, name: user.name, isNewUser: true });
   } else if (user.password === password) {
     // Existing user - verify password
+    // Update name if provided
+    if (name) user.name = name;
     const sessionToken = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
     userSessions[sessionToken] = username;
-    res.json({ success: true, sessionToken, username, isNewUser: false });
+    res.json({ success: true, sessionToken, username, name: user.name, isNewUser: false });
   } else {
     res.status(401).json({ error: 'Invalid password' });
   }
@@ -195,8 +240,44 @@ app.get('/api/user/me', requireUser, (req, res) => {
   const user = getUser(req.username);
   res.json({
     username: req.username,
+    name: user.name || req.username,
     points: user.points,
     wagers: user.wagers.map(wagerId => wagers.find(w => w.id === wagerId))
+  });
+});
+
+// User: Award fixed tokens for completing a scouting session
+app.post('/api/user/scout-complete', requireUser, (req, res) => {
+  // Allow admin to award to a specific username by passing { targetUsername }
+  const adminToken = req.headers['x-admin-session'];
+  let targetUsername = req.username; // default: award to the authenticated user
+
+  if (req.body && req.body.targetUsername && adminToken && adminSessions.has(adminToken)) {
+    targetUsername = req.body.targetUsername;
+  }
+
+  const user = getUser(targetUsername);
+
+  // Optionally update the display name if provided
+  if (req.body && req.body.name) {
+    // Validate that the provided scouting name matches the target user's stored name
+    const providedName = String(req.body.name || '').trim();
+    const storedName = String(user.name || '').trim();
+    if (storedName && providedName && storedName.toLowerCase() !== providedName.toLowerCase()) {
+      return res.status(400).json({ error: 'Scouting name does not match the target user' });
+    }
+    // Do not overwrite the stored name here; scouting name is only for verification
+  }
+
+  user.points = (user.points || 0) + SCOUTING_REWARD;
+
+  res.json({
+    success: true,
+    awarded: SCOUTING_REWARD,
+    username: targetUsername,
+    name: user.name,
+    points: user.points,
+    message: `Awarded ${SCOUTING_REWARD} points for completing scouting session to ${targetUsername}`
   });
 });
 
@@ -471,6 +552,28 @@ app.get('/api/admin/tba/config', requireAdmin, (req, res) => {
     eventKey: TBA_EVENT_KEY || '',
     apiKeySet: !!TBA_API_KEY
   });
+});
+
+// Admin: Get/Set application config (scouting reward, rate limit)
+app.get('/api/admin/config', requireAdmin, (req, res) => {
+  res.json({
+    scoutingReward: SCOUTING_REWARD,
+    rateLimitPerSecond: RATE_LIMIT_PER_SECOND
+  });
+});
+
+app.post('/api/admin/config', requireAdmin, (req, res) => {
+  const { scoutingReward, rateLimitPerSecond } = req.body || {};
+  if (typeof scoutingReward !== 'undefined') {
+    const val = parseInt(scoutingReward, 10);
+    if (!isNaN(val) && val >= 0) SCOUTING_REWARD = val;
+  }
+  if (typeof rateLimitPerSecond !== 'undefined') {
+    const rl = parseFloat(rateLimitPerSecond);
+    if (!isNaN(rl) && rl > 0) RATE_LIMIT_PER_SECOND = rl;
+  }
+
+  res.json({ success: true, scoutingReward: SCOUTING_REWARD, rateLimitPerSecond: RATE_LIMIT_PER_SECOND });
 });
 
 // Admin: Fetch matches from TBA

@@ -1,5 +1,117 @@
 let adminSessionToken = null;
 
+// Custom Modal System
+const CustomModal = {
+    overlay: null,
+    icon: null,
+    title: null,
+    message: null,
+    buttons: null,
+
+    init() {
+        this.overlay = document.getElementById('customModalOverlay');
+        this.icon = document.getElementById('customModalIcon');
+        this.title = document.getElementById('customModalTitle');
+        this.message = document.getElementById('customModalMessage');
+        this.buttons = document.getElementById('customModalButtons');
+
+        if (this.overlay) {
+            this.overlay.addEventListener('click', (e) => {
+                if (e.target === this.overlay) {
+                    this.close();
+                }
+            });
+        }
+    },
+
+    show(options) {
+        const { type = 'info', title = '', message = '', buttons = [] } = options;
+
+        const icons = {
+            info: 'ℹ️',
+            success: '✅',
+            error: '❌',
+            warning: '⚠️'
+        };
+        this.icon.textContent = icons[type] || icons.info;
+        this.icon.className = `custom-modal-icon ${type}`;
+
+        this.title.textContent = title;
+        this.message.textContent = message;
+
+        this.buttons.innerHTML = '';
+        buttons.forEach(btn => {
+            const button = document.createElement('button');
+            button.className = `custom-modal-btn ${btn.style || 'secondary'}`;
+            button.textContent = btn.text;
+            button.onclick = () => {
+                if (btn.onClick) btn.onClick();
+                this.close();
+            };
+            this.buttons.appendChild(button);
+        });
+
+        this.overlay.classList.add('show');
+    },
+
+    close() {
+        this.overlay.classList.remove('show');
+    },
+
+    alert(message, title = 'Notice') {
+        return new Promise(resolve => {
+            this.show({
+                type: 'info',
+                title,
+                message,
+                buttons: [
+                    { text: 'OK', style: 'primary', onClick: resolve }
+                ]
+            });
+        });
+    },
+
+    success(message, title = 'Success') {
+        return new Promise(resolve => {
+            this.show({
+                type: 'success',
+                title,
+                message,
+                buttons: [
+                    { text: 'OK', style: 'primary', onClick: resolve }
+                ]
+            });
+        });
+    },
+
+    error(message, title = 'Error') {
+        return new Promise(resolve => {
+            this.show({
+                type: 'error',
+                title,
+                message,
+                buttons: [
+                    { text: 'OK', style: 'primary', onClick: resolve }
+                ]
+            });
+        });
+    },
+
+    confirm(message, title = 'Confirm') {
+        return new Promise(resolve => {
+            this.show({
+                type: 'warning',
+                title,
+                message,
+                buttons: [
+                    { text: 'Cancel', style: 'secondary', onClick: () => resolve(false) },
+                    { text: 'Confirm', style: 'danger', onClick: () => resolve(true) }
+                ]
+            });
+        });
+    }
+};
+
 // Check if already logged in
 document.addEventListener('DOMContentLoaded', () => {
     const savedToken = localStorage.getItem('adminSessionToken');
