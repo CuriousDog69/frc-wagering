@@ -45,8 +45,11 @@ const CustomModal = {
             button.className = `custom-modal-btn ${btn.style || 'secondary'}`;
             button.textContent = btn.text;
             button.onclick = () => {
-                if (btn.onClick) btn.onClick();
-                this.close();
+                try {
+                    if (btn.onClick) btn.onClick();
+                } finally {
+                    this.close();
+                }
             };
             this.buttons.appendChild(button);
         });
@@ -220,7 +223,7 @@ async function scheduleMatch(event) {
     const team2 = document.getElementById('team2Input').value.trim();
 
     if (!team1 || !team2) {
-        alert('Please enter both teams');
+        await CustomModal.alert('Please enter both teams');
         return;
     }
 
@@ -237,15 +240,15 @@ async function scheduleMatch(event) {
         const result = await response.json();
 
         if (response.ok) {
-            alert('Match scheduled successfully!');
+            await CustomModal.success('Match scheduled successfully!');
             document.getElementById('scheduleForm').reset();
             loadDashboardData();
         } else {
-            alert(`Error: ${result.error}`);
+            await CustomModal.error(`Error: ${result.error}`);
         }
     } catch (error) {
         console.error('Schedule error:', error);
-        alert('Failed to schedule match');
+        await CustomModal.error('Failed to schedule match');
     }
 }
 
@@ -301,11 +304,11 @@ async function resolveMatch(matchId) {
     const winner = document.getElementById('winnerSelect').value;
 
     if (!winner) {
-        alert('Please select a winner');
+        await CustomModal.alert('Please select a winner');
         return;
     }
 
-    if (!confirm(`Are you sure ${winner} won this match? This will resolve all wagers.`)) {
+    if (!await CustomModal.confirm(`Are you sure ${winner} won this match? This will resolve all wagers.`)) {
         return;
     }
 
@@ -322,14 +325,14 @@ async function resolveMatch(matchId) {
         const result = await response.json();
 
         if (response.ok) {
-            alert('Match resolved successfully! Wagers have been processed.');
+            await CustomModal.success('Match resolved successfully! Wagers have been processed.');
             loadDashboardData();
         } else {
-            alert(`Error: ${result.error}`);
+            await CustomModal.error(`Error: ${result.error}`);
         }
     } catch (error) {
         console.error('Resolve error:', error);
-        alert('Failed to resolve match');
+        await CustomModal.error('Failed to resolve match');
     }
 }
 
@@ -399,7 +402,7 @@ function displayMatchHistory(matches) {
 
 // Reset all user points to 100
 async function resetAllPoints() {
-    if (!confirm('Are you sure you want to reset ALL user points to 100? This action cannot be undone.')) {
+    if (!await CustomModal.confirm('Are you sure you want to reset ALL user points to 100? This action cannot be undone.')) {
         return;
     }
 
@@ -472,12 +475,12 @@ async function saveTBAConfig() {
     const eventKey = document.getElementById('tbaEventKey').value.trim();
 
     if (!apiKey) {
-        alert('Please enter a TBA API key');
+        await CustomModal.alert('Please enter a TBA API key');
         return;
     }
 
     if (!eventKey) {
-        alert('Please enter an event key');
+        await CustomModal.alert('Please enter an event key');
         return;
     }
 
@@ -494,22 +497,22 @@ async function saveTBAConfig() {
         const result = await response.json();
 
         if (response.ok) {
-            alert('TBA configuration saved successfully!');
+            await CustomModal.success('TBA configuration saved successfully!');
             loadTBAConfig();
             document.getElementById('tbaApiKey').value = '';
             document.getElementById('tbaEventKey').value = '';
         } else {
-            alert(`Error: ${result.error}`);
+            await CustomModal.error(`Error: ${result.error}`);
         }
     } catch (error) {
         console.error('Error saving TBA config:', error);
-        alert('Failed to save TBA configuration');
+        await CustomModal.error('Failed to save TBA configuration');
     }
 }
 
 // Sync next match from TBA
 async function syncFromTBA() {
-    if (!confirm('This will schedule the next upcoming match from TBA. Continue?')) {
+    if (!await CustomModal.confirm('This will schedule the next upcoming match from TBA. Continue?')) {
         return;
     }
 
@@ -524,7 +527,7 @@ async function syncFromTBA() {
         const result = await response.json();
 
         const messageEl = document.getElementById('tbaMessage');
-        if (response.ok) {
+            if (response.ok) {
             messageEl.textContent = result.message;
             messageEl.style.display = 'block';
             messageEl.style.color = '#4caf50';
@@ -549,7 +552,7 @@ async function syncFromTBA() {
 
 // Auto-resolve match from TBA
 async function autoResolveFromTBA() {
-    if (!confirm('This will check TBA and resolve the active match if it has been played. Continue?')) {
+    if (!await CustomModal.confirm('This will check TBA and resolve the active match if it has been played. Continue?')) {
         return;
     }
 

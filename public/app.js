@@ -18,6 +18,7 @@ const CustomModal = {
         this.message = document.getElementById('customModalMessage');
         this.buttons = document.getElementById('customModalButtons');
 
+
         if (this.overlay) {
             this.overlay.addEventListener('click', (e) => {
                 if (e.target === this.overlay) {
@@ -48,8 +49,11 @@ const CustomModal = {
             button.className = `custom-modal-btn ${btn.style || 'secondary'}`;
             button.textContent = btn.text;
             button.onclick = () => {
-                if (btn.onClick) btn.onClick();
-                this.close();
+                try {
+                    if (btn.onClick) btn.onClick();
+                } finally {
+                    this.close();
+                }
             };
             this.buttons.appendChild(button);
         });
@@ -119,6 +123,7 @@ const CustomModal = {
 document.addEventListener('DOMContentLoaded', () => {
     const savedToken = localStorage.getItem('userSessionToken');
     const savedUsername = localStorage.getItem('username');
+    CustomModal.init(); 
     
     if (savedToken && savedUsername) {
         userSessionToken = savedToken;
@@ -194,7 +199,7 @@ async function userLogin(event) {
             localStorage.setItem('username', currentUsername);
             
             if (result.isNewUser) {
-                alert(`Welcome, ${username}! Your account has been created with 100 points.`);
+                await CustomModal.success(`Welcome, ${username}! Your account has been created with 100 points.`);
             }
             
             showApp();
@@ -511,9 +516,9 @@ async function openWagerModal(matchId) {
         
         const modal = document.getElementById('wagerModal');
         modal.classList.add('show');
-    } catch (error) {
+        } catch (error) {
         console.error('Error opening wager modal:', error);
-        alert('Failed to load match details');
+        await CustomModal.error('Failed to load match details');
     }
 }
 
@@ -562,7 +567,7 @@ async function placeWager(event) {
     event.preventDefault();
     
     if (!userSessionToken) {
-        alert('Please login first');
+        await CustomModal.alert('Please login first');
         return;
     }
     
@@ -570,7 +575,7 @@ async function placeWager(event) {
     const points = parseInt(document.getElementById('pointsInput').value);
     
     if (!currentMatch) {
-        alert('No match selected');
+        await CustomModal.alert('No match selected');
         return;
     }
     
@@ -591,16 +596,16 @@ async function placeWager(event) {
         const result = await response.json();
         
         if (response.ok) {
-            alert(`Wager placed successfully! Remaining points: ${result.remainingPoints}`);
+            await CustomModal.success(`Wager placed successfully! Remaining points: ${result.remainingPoints}`);
             closeModal();
             loadUserInfo();
             loadMatches();
         } else {
-            alert(`Error: ${result.error}`);
+            await CustomModal.error(`Error: ${result.error}`);
         }
     } catch (error) {
         console.error('Error placing wager:', error);
-        alert('Failed to place wager');
+        await CustomModal.error('Failed to place wager');
     }
 }
 
