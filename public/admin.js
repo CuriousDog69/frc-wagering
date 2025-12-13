@@ -118,6 +118,8 @@ const CustomModal = {
 // Check if already logged in
 document.addEventListener('DOMContentLoaded', () => {
     const savedToken = localStorage.getItem('adminSessionToken');
+    // Initialize custom modal elements
+    CustomModal.init();
     if (savedToken) {
         adminSessionToken = savedToken;
         checkAdminAuth();
