@@ -92,6 +92,21 @@ function getUser(username) {
   return users[username];
 }
 
+// Helper to find a user by display name (case-insensitive)
+function findUserByName(fullName) {
+  const normalized = String(fullName || '').trim().toLowerCase();
+  if (!normalized) return null;
+
+  for (const [username, user] of Object.entries(users)) {
+    const storedName = String(user.name || username).trim().toLowerCase();
+    if (storedName === normalized) {
+      return { username, user };
+    }
+  }
+
+  return null;
+}
+
 // Helper function to make TBA API requests
 function tbaRequest(endpoint) {
   return new Promise((resolve, reject) => {
@@ -246,28 +261,30 @@ app.get('/api/user/me', requireUser, (req, res) => {
   });
 });
 
-// User: Award fixed tokens for completing a scouting session
-app.post('/api/user/scout-complete', requireUser, (req, res) => {
-  // Allow admin to award to a specific username by passing { targetUsername }
-  const adminToken = req.headers['x-admin-session'];
-  let targetUsername = req.username; // default: award to the authenticated user
-
-  if (req.body && req.body.targetUsername && adminToken && adminSessions.has(adminToken)) {
-    targetUsername = req.body.targetUsername;
+// User: Award fixed tokens for completing a scouting session via base64 full name
+app.post('/api/user/scout-complete', (req, res) => {
+  const encodedName = req.body && req.body.fullNameBase64 ? String(req.body.fullNameBase64) : '';
+  if (!encodedName) {
+    return res.status(400).json({ error: 'fullNameBase64 is required' });
   }
 
-  const user = getUser(targetUsername);
-
-  // Optionally update the display name if provided
-  if (req.body && req.body.name) {
-    // Validate that the provided scouting name matches the target user's stored name
-    const providedName = String(req.body.name || '').trim();
-    const storedName = String(user.name || '').trim();
-    if (storedName && providedName && storedName.toLowerCase() !== providedName.toLowerCase()) {
-      return res.status(400).json({ error: 'Scouting name does not match the target user' });
-    }
-    // Do not overwrite the stored name here; scouting name is only for verification
+  let decodedName = '';
+  try {
+    decodedName = Buffer.from(encodedName, 'base64').toString('utf8').trim();
+  } catch (err) {
+    return res.status(400).json({ error: 'Invalid base64 full name' });
   }
+
+  if (!decodedName) {
+    return res.status(400).json({ error: 'Full name cannot be empty' });
+  }
+
+  const match = findUserByName(decodedName);
+  if (!match) {
+    return res.status(404).json({ error: 'User with provided full name not found' });
+  }
+
+  const { username: targetUsername, user } = match;
 
   user.points = (user.points || 0) + SCOUTING_REWARD;
 
@@ -277,7 +294,7 @@ app.post('/api/user/scout-complete', requireUser, (req, res) => {
     username: targetUsername,
     name: user.name,
     points: user.points,
-    message: `Awarded ${SCOUTING_REWARD} points for completing scouting session to ${targetUsername}`
+    message: `Awarded ${SCOUTING_REWARD} points for completing scouting session to ${decodedName}`
   });
 });
 
